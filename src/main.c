@@ -3,6 +3,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <sys/resource.h>
+#include <xmmintrin.h>
 #define _GNU_SOURCE
 
 // Função naive para normalizar um vetor de características
@@ -17,6 +18,36 @@
         features[i] *= inv_sqrt;
     }
 } */
+
+// Função otimizada para normalizar um vetor de características usando SSE
+void normalize_feature_vector_sse(float* features, int length) {
+    __m128 sum_vector = _mm_setzero_ps(); // Inicializa um vetor SSE com zeros
+    int i;
+
+    // Calcular a soma dos quadrados
+    for (i = 0; i <= length - 4; i += 4) {
+        __m128 feature_vector = _mm_loadu_ps(&features[i]); // Carrega 4 elementos do vetor
+        __m128 squared_vector = _mm_mul_ps(feature_vector, feature_vector); // Calcula o quadrado
+        sum_vector = _mm_add_ps(sum_vector, squared_vector); // Soma
+    }
+
+    // Reduzindo a soma dos quadrados para um único valor
+    float sum_array[4];
+    _mm_storeu_ps(sum_array, sum_vector);
+    float sum = sum_array[0] + sum_array[1] + sum_array[2] + sum_array[3];
+
+    // Tratar os elementos restantes se length não for múltiplo de 4
+    for (; i < length; i++) {
+        sum += features[i] * features[i];
+    }
+
+    float inv_sqrt = 1.0f / sqrtf(sum);
+
+    // Normaliza o vetor
+    for (i = 0; i < length; i++) {
+        features[i] *= inv_sqrt;
+    }
+}
 
 // Definição da lookup table
 float inv_sqrt_table[TABLE_SIZE];
