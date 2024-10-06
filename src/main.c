@@ -3,7 +3,34 @@
 #include <math.h>
 #include <stdlib.h>
 #include <sys/resource.h>
+#include <xmmintrin.h>
 #define _GNU_SOURCE
+
+// Função otimizada para normalizar um vetor de características usando SSE
+void normalize_feature_vector_sse(float* features, int length) {
+    __m128 sum_vector = _mm_setzero_ps(); // Inicializa um vetor SSE com zeros
+    int i;
+
+    for (int i = 0; i <= length - 4; i += 4) {
+        __m128 feature_vector = _mm_loadu_ps(&features[i]);
+        __m128 squared_vector = _mm_mul_ps(feature_vector, feature_vector);
+        sum_vector = _mm_add_ps(sum_vector, squared_vector);
+    }
+
+    float sum_array[4];
+    _mm_storeu_ps(sum_array, sum_vector);
+    float sum = sum_array[0] + sum_array[1] + sum_array[2] + sum_array[3];
+
+    for (; i < length; i++) {
+        sum += features[i] * features[i];
+    }
+
+    float inv_sqrt = 1.0f / sqrtf(sum);
+
+    for (i = 0; i < length; i++) {
+        features[i] *= inv_sqrt;
+    }
+}
 
 // Função naïve para normalizar um vetor de características
 void normalize_feature_vector(float* features, int length) {
@@ -50,6 +77,7 @@ float** read_csv(const char* filename, int* num_elements, int* num_dimensions) {
 
     // Read the data
     int i = 0;
+    
     while (fgets(line, sizeof(line), file)) {
         int j = 0;
         char* token = strtok(line, ",");
