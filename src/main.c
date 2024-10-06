@@ -3,37 +3,10 @@
 #include <math.h>
 #include <stdlib.h>
 #include <sys/resource.h>
-#include <xmmintrin.h>
 #define _GNU_SOURCE
 
-// Função otimizada para normalizar um vetor de características usando SSE
-void normalize_feature_vector_sse(float* features, int length) {
-    __m128 sum_vector = _mm_setzero_ps(); // Inicializa um vetor SSE com zeros
-    int i;
-
-    for (int i = 0; i <= length - 4; i += 4) {
-        __m128 feature_vector = _mm_loadu_ps(&features[i]);
-        __m128 squared_vector = _mm_mul_ps(feature_vector, feature_vector);
-        sum_vector = _mm_add_ps(sum_vector, squared_vector);
-    }
-
-    float sum_array[4];
-    _mm_storeu_ps(sum_array, sum_vector);
-    float sum = sum_array[0] + sum_array[1] + sum_array[2] + sum_array[3];
-
-    for (; i < length; i++) {
-        sum += features[i] * features[i];
-    }
-
-    float inv_sqrt = 1.0f / sqrtf(sum);
-
-    for (i = 0; i < length; i++) {
-        features[i] *= inv_sqrt;
-    }
-}
-
-// Função naïve para normalizar um vetor de características
-void normalize_feature_vector(float* features, int length) {
+// Função naive para normalizar um vetor de características
+/* void normalize_feature_vector(float* features, int length) {
     float sum = 0.0f;
     for (int i = 0; i < length; i++) {
         sum += features[i] * features[i];
@@ -43,6 +16,37 @@ void normalize_feature_vector(float* features, int length) {
     for (int i = 0; i < length; i++) {
         features[i] *= inv_sqrt;
     }
+} */
+
+// Definição da lookup table
+float inv_sqrt_table[TABLE_SIZE];
+
+// Função para pré-computar a tabela
+void incializaLookupTable() {
+    for(int i = 0; i < TABLE_SIZE; i++) {
+        inv_sqrt_table[i] = 1.00f / sqrt((float)i);
+    }
+}
+
+// Função para normalizar o vetor pelo cenário de otimização 1 (Lookup Table)
+void normalize_feature_vector(float* features, int length) {
+    float sum = 1.00f;
+
+    for(int i = 0; i < length; i++) {
+        sum += features[i] * features[i];
+    }
+    
+    if(sum == 0.00f) {
+        printf("Não é possível normalizar vetor nulo!");
+        return;
+    }
+
+    int index = (int)sum;
+    if(index >= TABLE_SIZE) {
+        index = TABLE_SIZE - 1;
+    }
+
+    float inv_sqrt = inv_sqrt_table[index];
 }
 
 // Função para ler dados de um arquivo CSV
