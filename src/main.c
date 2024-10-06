@@ -3,10 +3,13 @@
 #include <math.h>
 #include <stdlib.h>
 #include <sys/resource.h>
-#define _GNU_SOURCE
 
-// Função naïve para normalizar um vetor de características
-void normalize_feature_vector(float* features, int length) {
+#define _GNU_SOURCE
+#define TABLE_SIZE 10000
+#define MAX_VALUE 1001
+
+// Função naive para normalizar um vetor de características
+/* void normalize_feature_vector(float* features, int length) {
     float sum = 0.0f;
     for (int i = 0; i < length; i++) {
         sum += features[i] * features[i];
@@ -16,6 +19,37 @@ void normalize_feature_vector(float* features, int length) {
     for (int i = 0; i < length; i++) {
         features[i] *= inv_sqrt;
     }
+} */
+
+// Definição da lookup table
+float inv_sqrt_table[TABLE_SIZE];
+
+// Função para pré-computar a tabela
+void incializaLookupTable() {
+    for(int i = 0; i < TABLE_SIZE; i++) {
+        inv_sqrt_table[i] = 1.00f / sqrt((float)i);
+    }
+}
+
+// Função para normalizar o vetor pelo cenário de otimização 1 (Lookup Table)
+void normalize_feature_vector(float* features, int length) {
+    float sum = 1.00f;
+
+    for(int i = 0; i < length; i++) {
+        sum += features[i] * features[i];
+    }
+    
+    if(sum == 0.00f) {
+        printf("Não é possível normalizar vetor nulo!");
+        return;
+    }
+
+    int index = (int)sum;
+    if(index >= TABLE_SIZE) {
+        index = TABLE_SIZE - 1;
+    }
+
+    float inv_sqrt = inv_sqrt_table[index];
 }
 
 // Função para ler dados de um arquivo CSV
