@@ -10,6 +10,28 @@
 
 #define _GNU_SOURCE
 
+// função de raiz manual por causa de problema com a biblioteca math
+double sqrt(double numero) {
+    if (numero < 0) {
+        return -1; 
+    }
+    
+    double estimativa = numero; 
+    double precisao = 0.00001;
+
+    while (1) {
+        double raiz = 0.5 * (estimativa + (numero / estimativa));
+
+        if (fabs(raiz - estimativa) < precisao) {
+            break;
+        }
+
+        estimativa = raiz;
+    }
+
+    return estimativa;
+}
+
 // Definição da lookup table
 float inv_sqrt_table[TABLE_SIZE];
 
@@ -83,7 +105,7 @@ void normalizeSSE(float* features, int length) {
         sum += features[i] * features[i];
     }
 
-    float inv_sqrt = 1.0f / sqrtf(sum);
+    float inv_sqrt = 1.0f / sqrt(sum);
 
     for (i = 0; i < length; i++) {
         features[i] *= inv_sqrt;
@@ -160,16 +182,18 @@ int main() {
     printf("Digite a otimização desejada: \n");
     printf("1 - Tabela de Consulta \n");
     printf("2 - Quake III \n");
-    printf("3 - SSE");
+    printf("3 - SSE \n");
 
-    scanf(escolha,"&i");
+    scanf("%i", &escolha);
+    while(escolha <= 0 || escolha > 3) {
+         scanf("%i", &escolha);
+    }
 
     for (int i = 0; i < num_elements; i++) {
         switch (escolha) {
             case 1: normalizeLookupTable(features[i], num_dimensions);
             case 2: normalizeQuake(features[i], num_dimensions);
             case 3: normalizeSSE(features[i], num_dimensions);
-            default: perror("Digite um número válido!");
         }
     }
     get_resource_usage(&end_usage);
