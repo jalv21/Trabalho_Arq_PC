@@ -5,9 +5,10 @@
 #include <sys/resource.h>
 #include <xmmintrin.h>
 
+#define TABLE_SIZE 1001
+#define MAX_VALUE 10000
+
 #define _GNU_SOURCE
-#define TABLE_SIZE 10000
-#define MAX_VALUE 1001
 
 // Definição da lookup table
 float inv_sqrt_table[TABLE_SIZE];
@@ -121,6 +122,7 @@ float** read_csv(const char* filename, int* num_elements, int* num_dimensions) {
 
     // Read the data
     int i = 0;
+    
     while (fgets(line, sizeof(line), file)) {
         int j = 0;
         char* token = strtok(line, ",");
