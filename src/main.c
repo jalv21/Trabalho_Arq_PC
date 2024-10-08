@@ -3,23 +3,11 @@
 #include <math.h>
 #include <stdlib.h>
 #include <sys/resource.h>
+#include <xmmintrin.h>
 
 #define _GNU_SOURCE
 #define TABLE_SIZE 10000
 #define MAX_VALUE 1001
-
-// Função naive para normalizar um vetor de características
-/* void normalize_feature_vector(float* features, int length) {
-    float sum = 0.0f;
-    for (int i = 0; i < length; i++) {
-        sum += features[i] * features[i];
-    }
-    float inv_sqrt = 1.0f / sqrt(sum);
-
-    for (int i = 0; i < length; i++) {
-        features[i] *= inv_sqrt;
-    }
-} */
 
 // Definição da lookup table
 float inv_sqrt_table[TABLE_SIZE];
@@ -32,7 +20,7 @@ void incializaLookupTable() {
 }
 
 // Função para normalizar o vetor pelo cenário de otimização 1 (Lookup Table)
-void normalize_feature_vector(float* features, int length) {
+void normalizeLookupTable(float* features, int length) {
     float sum = 1.00f;
 
     for(int i = 0; i < length; i++) {
@@ -50,6 +38,55 @@ void normalize_feature_vector(float* features, int length) {
     }
 
     float inv_sqrt = inv_sqrt_table[index];
+}
+
+// Função otimizada para calcular a raiz quadrada inversa
+float InvSqrt(float x) {
+    float xhalf = 0.5f * x;
+    int i = *(int*)&x;
+    i = 0x5f3759df - (i >> 1);
+    x = *(float*)&i;
+    x = x * (1.5f - xhalf * x * x);
+    return x;
+}
+
+// Função otimizada pelo Quake III para normalizar um vetor de características
+void normalizeQuake(float* features, int length) {
+    float sum = 0.0f;
+    for (int i = 0; i < length; i++) {
+        sum += features[i] * features[i];
+    }
+    float inv_sqrt = InvSqrt(sum);  // Utilizando a raiz quadrada inversa otimizada
+
+    for (int i = 0; i < length; i++) {
+        features[i] *= inv_sqrt;
+    }
+}
+
+// Função otimizada para normalizar um vetor de características usando SSE
+void normalizeSSE(float* features, int length) {
+    __m128 sum_vector = _mm_setzero_ps();
+    int i;
+
+    for (i = 0; i <= length - 4; i += 4) {
+        __m128 feature_vector = _mm_loadu_ps(&features[i]);
+        __m128 squared_vector = _mm_mul_ps(feature_vector, feature_vector);
+        sum_vector = _mm_add_ps(sum_vector, squared_vector);
+    }
+
+    float sum_array[4];
+    _mm_storeu_ps(sum_array, sum_vector);
+    float sum = sum_array[0] + sum_array[1] + sum_array[2] + sum_array[3];
+
+    for (; i < length; i++) {
+        sum += features[i] * features[i];
+    }
+
+    float inv_sqrt = 1.0f / sqrtf(sum);
+
+    for (i = 0; i < length; i++) {
+        features[i] *= inv_sqrt;
+    }
 }
 
 // Função para ler dados de um arquivo CSV
@@ -115,10 +152,23 @@ int main() {
     float** features = read_csv("data.csv", &num_elements, &num_dimensions);
 
     struct rusage start_usage, end_usage;
-    
     get_resource_usage(&start_usage);
+
+    int escolha;
+    printf("Digite a otimização desejada: \n");
+    printf("1 - Tabela de Consulta \n");
+    printf("2 - Quake III \n");
+    printf("3 - SSE");
+
+    scanf(escolha,"&i");
+
     for (int i = 0; i < num_elements; i++) {
-        normalize_feature_vector(features[i], num_dimensions);
+        switch (escolha) {
+            case 1: normalizeLookupTable(features[i], num_dimensions);
+            case 2: normalizeQuake(features[i], num_dimensions);
+            case 3: normalizeSSE(features[i], num_dimensions);
+            default: perror("Digite um número válido!");
+        }
     }
     get_resource_usage(&end_usage);
 
